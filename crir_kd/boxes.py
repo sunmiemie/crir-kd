@@ -77,4 +77,10 @@ def iou(left, right):
     intersection = max(0, min(left.x2, right.x2) - max(left.x1, right.x1)) * max(
         0, min(left.y2, right.y2) - max(left.y1, right.y1)
     )
-    return intersection / (left.area + right.area - intersection)
+    union = left.area + right.area - intersection
+    if math.isfinite(union):
+        return intersection / union
+    # Individual areas can be representable even when their sum overflows.
+    scale = max(left.area, right.area)
+    scaled_intersection = intersection / scale
+    return scaled_intersection / (left.area / scale + right.area / scale - scaled_intersection)

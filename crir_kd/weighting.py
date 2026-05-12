@@ -33,7 +33,15 @@ def weighted_kd_loss(instance_losses, weights):
         if loss < 0:
             raise ValueError("instance losses must be nonnegative")
         terms.append(loss * weight)
-    return math.fsum(terms) / len(terms) if terms else 0.0
+    if not terms:
+        return 0.0
+    try:
+        return math.fsum(terms) / len(terms)
+    except OverflowError:
+        # The mean of finite nonnegative terms cannot exceed their maximum.
+        # Scale only the overflow case to preserve ordinary-range arithmetic.
+        scale = max(terms)
+        return (math.fsum(term / scale for term in terms) / len(terms)) * scale
 
 
 def total_loss(detection_loss, instance_losses, weights, kd_strength):
@@ -41,7 +49,8 @@ def total_loss(detection_loss, instance_losses, weights, kd_strength):
     kd_strength = finite_number(kd_strength, "kd_strength")
     if detection_loss < 0 or kd_strength < 0:
         raise ValueError("detection_loss and kd_strength must be nonnegative")
-    return detection_loss + kd_strength * weighted_kd_loss(instance_losses, weights)
+    result = detection_loss + kd_strength * weighted_kd_loss(instance_losses, weights)
+    return finite_number(result, "total_loss")
 
 
 def matched_mean_control(weights):

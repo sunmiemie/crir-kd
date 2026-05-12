@@ -28,6 +28,7 @@ python -m crir_kd summarize path/to/runs.json
 - `instance_stability` 接收已逆变换到共同原图坐标的框；不可见视图不计分母，可见但漏检的视图计为缺失。变化量是相对参考预测的中心和宽高绝对变化，分别按 GT 宽高（带下限）归一化后取均值。`s = coverage × exp(-variation / tau)`；没有参考预测或有效匹配时为零。
 - `reliability_weights` 提供 uniform、quality、stability、joint 四种对照。joint 采用 `floor + (1-floor) × q × s`；`matched_mean_control` 用等平均权重的统一权重控制整体 KD 强度。
 - `weighted_kd_loss` 使用 `mean(weight × instance_loss)`，分母为全部实例数量；不会除以权重和。`total_loss` 保留独立传入的完整检测损失。这里只核查标量公式，不验证梯度。
+- 对面积相加或损失求和溢出的极端有限输入，IoU 和损失均值使用缩放计算；最终总损失若仍超出浮点表示范围，会明确抛出 `ValueError`，不返回无穷大。
 - `size_diagnostics` 按显式提供的 `sqrt(box area)` 边界分组，区间为左闭右开。每个目标（含未匹配者）都计入分母；必须命名坐标空间。输出不是官方 tiny/small AP 或召回。
 
 这些定义是可检查的起点，不是已经选定的最终研究方法。冻结教师、神经网络梯度、RoIAlign/投影和导出学生模型仍待实现。

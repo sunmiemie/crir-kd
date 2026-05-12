@@ -26,3 +26,10 @@ class MatchingTests(unittest.TestCase):
     def test_bad_prediction_score_rejected(self):
         with self.assertRaises(ValueError):
             Prediction(Box(0, 0, 1, 1), 0, float("nan"))
+
+    def test_large_valid_boxes_do_not_become_unmatched(self):
+        box = Box(0, 0, 1e154, 1e154)
+        result = match_quality([Instance(box, 0)], [Prediction(box, 0, .75)])
+        self.assertEqual(result[0]["prediction_index"], 0)
+        self.assertEqual(result[0]["iou"], 1)
+        self.assertEqual(result[0]["quality"], .75)
