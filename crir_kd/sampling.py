@@ -7,6 +7,8 @@ from .boxes import Box, finite_number
 def feature_shape(features):
     if not isinstance(features, (list, tuple)) or not features:
         raise ValueError("features must be nonempty CHW sequences")
+    if any(not isinstance(channel, (list, tuple)) or any(not isinstance(row, (list, tuple)) for row in channel) for channel in features):
+        raise ValueError("features must contain channels of row sequences")
     height = len(features[0])
     width = len(features[0][0]) if height else 0
     if not height or not width:
