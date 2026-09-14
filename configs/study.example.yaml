@@ -1,0 +1,41 @@
+# Planning metadata only. Not an executable YOLO training configuration.
+project:
+  name: crir-kd
+  status: research-planning
+  implemented_training_pipeline: false
+
+task:
+  type: supervised-horizontal-box-detection
+  focus: tiny-objects
+  primary_dataset: VisDrone-DET
+  secondary_dataset: AI-TOD-v2
+
+teacher:
+  implementation: null  # Select and pin a YOLO implementation before coding.
+  checkpoint: null
+  illustrative_input_size: 1280
+  frozen_during_distillation: true
+
+student:
+  implementation: null
+  checkpoint: null
+  illustrative_input_size: 640
+  preserve_inference_architecture: true
+
+distillation:
+  status: proposed-not-implemented
+  target: gt-aligned-local-features
+  quality_signal: teacher-prediction-versus-training-gt
+  stability_signal: inverse-mapped-predictions-under-small-perturbations
+  keep_all_gt_detection_supervision: true
+  global_weight: null
+  soft_weight_floor: null
+
+evaluation:
+  fixed_official_data_splits: true
+  use_test_labels_for_training_or_tuning: false
+  primary_comparison: quality-only-versus-quality-and-stability
+  report_tiny_group_recall: true
+  report_teacher_training_overhead: true
+  report_student_end_to_end_latency: true
+  core_experiment_seeds: [0, 1, 2]

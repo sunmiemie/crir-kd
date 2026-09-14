@@ -1,0 +1,46 @@
+# Local environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Credentials and local-only settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+configs/local.*
+
+# Datasets, weights, generated experiments
+/data/
+/datasets/
+/weights/
+/checkpoints/
+/runs/
+/outputs/
+/wandb/
+*.pt
+*.pth
+*.onnx
+*.engine
+*.rknn
+*.ckpt
+*.safetensors
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
