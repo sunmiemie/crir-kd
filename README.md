@@ -31,6 +31,8 @@ Cross-Resolution Instance-Reliability-Guided Knowledge Distillation for Tiny Obj
 
 基础工具使用 Python 3.10+ 标准库，可在仓库根目录运行 `python -m crir_kd demo` 查看明确标注的合成演示，运行 `python -m unittest discover -s tests -v` 验证。数据审计、公式定义、输入格式与限制见 [基础工具说明](docs/prototype-tools.md)。这些工具不构成已完成的检测训练系统。
 
+本地图片/标注审计、格式转换预览、SVG 坐标检查，以及由输入框和特征运行的完整参考算式流程，见 [数据与参考流程](docs/data-and-reference-workflow.md)。可执行 `python -m crir_kd reference examples/reference.synthetic.json` 检查跨分辨率采样、可靠性和损失的合成端到端例子。
+
 ## 初始技术路线
 
 1. 在公开训练集上训练教师，验证它在微小目标上确实优于学生基线。

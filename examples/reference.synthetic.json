@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "ground_truth": [{"box": [0, 0, 1, 1], "class_id": 0}],
+  "reference_predictions": [{"box": [0, 0, 1, 1], "class_id": 0, "score": 0.9}],
+  "views": [{"id": "scaled", "crop": [0, 0, 2, 2], "size": [4, 4], "predictions": [{"box": [0, 0, 2, 2], "class_id": 0, "score": 0.8}]}],
+  "features": {"student": [[[1]]], "teacher": [[[2, 2], [2, 2]]], "student_boxes": [[0, 0, 1, 1]], "teacher_boxes": [[0, 0, 2, 2]]},
+  "detection_loss": 1,
+  "kd_strength": 0.5,
+  "floor": 0
+}
