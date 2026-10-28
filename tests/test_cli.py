@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 from crir_kd.__main__ import main
 
@@ -53,3 +54,46 @@ class CliTests(unittest.TestCase):
             status, output, _ = self.invoke("splits", str(path))
             self.assertEqual(status, 0)
             self.assertEqual(json.loads(output)["counts"]["train"], 1)
+
+    def test_box_svg_invalid_annotation_containers_are_input_errors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "boxes.json"
+            for annotations in (None, False, True, 0, 1, 1.5, "", "label", {}, {"xywh": [1, 2, 3, 4]}):
+                with self.subTest(annotations=annotations):
+                    content = json.dumps({"width": 10, "height": 10, "annotations": annotations})
+                    path.write_text(content, encoding="utf-8")
+                    status, output, error = self.invoke("box-svg", str(path))
+                    self.assertEqual(status, 2)
+                    self.assertEqual(output, "")
+                    self.assertEqual(json.loads(error), {"error": "annotations must be an array of objects"})
+                    self.assertEqual(path.read_text(encoding="utf-8"), content)
+                    self.assertEqual(list(Path(directory).iterdir()), [path])
+
+    def test_box_svg_accepts_missing_empty_and_populated_annotations(self):
+        cases = ({}, {"annotations": []}, {"annotations": [{"xywh": [1, 2, 3, 4], "label": "<target>&"}]})
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "boxes.json"
+            for fields in cases:
+                with self.subTest(fields=fields):
+                    path.write_text(json.dumps({"width": 10, "height": 10, **fields}), encoding="utf-8")
+                    status, output, error = self.invoke("box-svg", str(path))
+                    self.assertEqual(status, 0)
+                    self.assertEqual(error, "")
+                    root = ET.fromstring(output)
+                    self.assertEqual(root.attrib["viewBox"], "0 0 10 10")
+                    rectangles = root.findall("{http://www.w3.org/2000/svg}rect")
+                    self.assertEqual(len(rectangles), 1 + len(fields.get("annotations", [])))
+                    if fields.get("annotations"):
+                        self.assertEqual(rectangles[1].attrib["width"], "3")
+                        self.assertEqual(rectangles[1].attrib["height"], "4")
+                        self.assertEqual(root.find("{http://www.w3.org/2000/svg}text").text, "<target>&")
+
+    def test_box_svg_bad_later_row_does_not_emit_partial_svg(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "boxes.json"
+            path.write_text(json.dumps({"width": 10, "height": 10,
+                                        "annotations": [{"xywh": [1, 2, 3, 4]}, None]}), encoding="utf-8")
+            status, output, error = self.invoke("box-svg", str(path))
+            self.assertEqual(status, 2)
+            self.assertEqual(output, "")
+            self.assertIn("annotations", json.loads(error)["error"])

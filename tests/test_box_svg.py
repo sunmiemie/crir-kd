@@ -14,3 +14,14 @@ class BoxSvgTests(unittest.TestCase):
     def test_outside_boxes_are_reported(self):
         with self.assertRaises(ValueError):
             box_svg(10, 10, [{"xywh": [9, 9, 2, 2]}])
+
+    def test_annotations_require_an_array_including_empty_containers(self):
+        for annotations in (None, False, True, 0, 1, 1.5, "", "label", {}, {"xywh": [1, 2, 3, 4]}):
+            with self.subTest(annotations=annotations):
+                with self.assertRaisesRegex(ValueError, "annotations must be an array of objects"):
+                    box_svg(10, 10, annotations)
+
+    def test_empty_and_populated_tuples_match_list_output(self):
+        for annotations in ([], [{"xywh": [1, 2, 3, 4], "label": "target"}]):
+            with self.subTest(annotations=annotations):
+                self.assertEqual(box_svg(10, 10, annotations), box_svg(10, 10, tuple(annotations)))

@@ -7,6 +7,8 @@ from .boxes import Box
 def box_svg(width, height, annotations, title="Annotation coordinate check"):
     if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in (width, height)):
         raise ValueError("SVG dimensions must be positive integers")
+    if not isinstance(annotations, (list, tuple)):
+        raise ValueError("annotations must be an array of objects")
     lines = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}">',
              f'<title>{escape(str(title))}</title>', f'<rect width="{width}" height="{height}" fill="#eef2f7"/>']
     for index, row in enumerate(annotations):
