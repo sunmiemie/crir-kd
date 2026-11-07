@@ -7,6 +7,10 @@ import json
 REQUIRED_SECTIONS = ("dataset", "student", "teacher", "optimization", "augmentation", "evaluation", "kd_features")
 
 
+def _canonical_json(value):
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+
+
 def protocol_fingerprint(protocol):
     if not isinstance(protocol, dict) or any(not isinstance(protocol.get(section), dict) for section in REQUIRED_SECTIONS):
         raise ValueError("protocol requires dataset, student, teacher, optimization, augmentation, evaluation and kd_features objects")
@@ -22,7 +26,7 @@ def protocol_fingerprint(protocol):
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{section}.{key} must be a nonempty string")
     try:
-        canonical = json.dumps(protocol, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+        canonical = _canonical_json(protocol)
     except (ValueError, TypeError) as error:
         raise ValueError(f"protocol must contain finite JSON values: {error}") from error
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -38,7 +42,7 @@ def compare_protocols(left, right):
                     differences.append({"path": path + key, "left": a.get(key), "right": b.get(key), "presence_differs": True})
                 else:
                     compare(a[key], b[key], path + key + ".")
-        elif type(a) is not type(b) or a != b:
+        elif _canonical_json(a) != _canonical_json(b):
             differences.append({"path": path.rstrip("."), "left": a, "right": b})
     compare(left, right, "")
     return {"comparable": left_hash == right_hash, "left_fingerprint": left_hash, "right_fingerprint": right_hash, "differences": differences}

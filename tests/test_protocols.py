@@ -1,4 +1,6 @@
 import copy
+import json
+import math
 import unittest
 from crir_kd.protocols import protocol_fingerprint, compare_protocols
 
@@ -29,3 +31,44 @@ class ProtocolTests(unittest.TestCase):
         first["optimization"]["lr"] = float("nan")
         with self.assertRaises(ValueError):
             protocol_fingerprint(first)
+
+    def test_type_changes_inside_arrays_report_the_original_array_path(self):
+        cases = (
+            ("optimization", "lr_schedule", "multiplier",
+             [{"epoch": 0, "multiplier": 1}], [{"epoch": 0, "multiplier": 1.0}]),
+            ("augmentation", "transforms", "enabled",
+             [{"name": "horizontal_flip", "enabled": False}],
+             [{"name": "horizontal_flip", "enabled": 0}]),
+        )
+        for section, key, value_key, left, right in cases:
+            with self.subTest(path=f"{section}.{key}"):
+                first, second = protocol_fixture(), protocol_fixture()
+                first[section][key], second[section][key] = left, right
+                original = json.dumps([first, second])
+                report = compare_protocols(first, second)
+                self.assertFalse(report["comparable"])
+                self.assertNotEqual(report["left_fingerprint"], report["right_fingerprint"])
+                self.assertEqual(report["differences"], [{"path": f"{section}.{key}", "left": left, "right": right}])
+                difference = report["differences"][0]
+                self.assertIs(type(difference["left"][0][value_key]), type(left[0][value_key]))
+                self.assertIs(type(difference["right"][0][value_key]), type(right[0][value_key]))
+                self.assertEqual(json.dumps([first, second]), original)
+
+    def test_dictionary_key_order_inside_arrays_is_not_a_difference(self):
+        first, second = protocol_fixture(), protocol_fixture()
+        first["optimization"]["lr_schedule"] = [{"epoch": 0, "multiplier": 1}]
+        second["optimization"]["lr_schedule"] = [{"multiplier": 1, "epoch": 0}]
+        report = compare_protocols(first, second)
+        self.assertTrue(report["comparable"])
+        self.assertEqual(report["left_fingerprint"], report["right_fingerprint"])
+        self.assertEqual(report["differences"], [])
+
+    def test_signed_zero_difference_explains_changed_fingerprint(self):
+        first, second = protocol_fixture(), protocol_fixture()
+        first["optimization"]["momentum"] = -0.0
+        second["optimization"]["momentum"] = 0.0
+        report = compare_protocols(first, second)
+        self.assertFalse(report["comparable"])
+        self.assertEqual(report["differences"], [{"path": "optimization.momentum", "left": -0.0, "right": 0.0}])
+        self.assertEqual(math.copysign(1, report["differences"][0]["left"]), -1)
+        self.assertEqual(math.copysign(1, report["differences"][0]["right"]), 1)
