@@ -23,6 +23,8 @@ Commands write results to stdout. `box-svg` emits SVG text suitable for redirect
 
 `convert-coco` emits a deterministic category-to-class mapping and label text by image ID, including negative images. Crowd/ignored objects fail by default. Explicit `--ignored-policy skip` is lossy and reports every skipped annotation; original official evaluation annotations must be preserved. This generic utility does not implement VisDrone ignore-region rules or replace dataset-specific conversion review.
 
+The COCO audit accepts an omitted `ignore` flag, booleans, or integer `0`/`1`. Strings (including `"0"` and `"false"`), `null`, arrays, objects, floating-point numbers, and other integers are invalid flags. Invalid flags identify the annotation in the audit (exit status `1`) and stop either conversion policy before any label output (exit status `2`), so truthy strings cannot silently discard targets. The existing `iscrowd` rule remains integer `0`/`1` only; booleans are not accepted for that field.
+
 `box-svg` takes `width`, `height`, and `annotations` with pixel `xywh` and optional `label`. It escapes labels, uses no scripts or external resources, and rejects outside-canvas boxes.
 
 Input-container validation added on 2026-10-28 requires JSON `annotations` to be an array of objects. An empty array or omitted field produces an unannotated canvas; `null`, booleans, numbers, strings, and objects are input errors. These errors return exit status `2` with a JSON error on stderr and no SVG on stdout. Direct Python calls accept lists and tuples. Invalid later rows also produce no partial SVG output.

@@ -32,6 +32,33 @@ class CocoLabelsTests(unittest.TestCase):
         self.data["annotations"][0]["area"] = 5
         self.assertTrue(inspect_coco(self.data)["valid"])
 
+    def test_ignore_accepts_missing_boolean_and_binary_integer_flags(self):
+        for fields in ({}, {"ignore": 0}, {"ignore": 1}, {"ignore": False}, {"ignore": True}):
+            with self.subTest(fields=fields):
+                data = copy.deepcopy(self.data)
+                data["annotations"][0].update(fields)
+                original = copy.deepcopy(data)
+                report = inspect_coco(data)
+                self.assertTrue(report["valid"])
+                self.assertEqual(report["valid_annotation_count"], 1)
+                self.assertEqual(report["issues"], [])
+                self.assertEqual(data, original)
+
+    def test_invalid_ignore_flags_report_the_annotation_without_mutating_input(self):
+        for value in (None, "0", "1", "false", "", [], [0], {}, {"value": 0}, -1, 2, 0.0, 1.0, 0.5):
+            with self.subTest(value=value):
+                data = copy.deepcopy(self.data)
+                data["annotations"].append({**data["annotations"][0], "id": 6, "ignore": value})
+                original = copy.deepcopy(data)
+                report = inspect_coco(data)
+                self.assertFalse(report["valid"])
+                self.assertEqual(report["valid_annotation_count"], 1)
+                self.assertEqual(len(report["issues"]), 1)
+                issue = report["issues"][0]
+                self.assertEqual((issue["section"], issue["index"], issue["severity"]), ("annotations", 1, "error"))
+                self.assertIn("ignore", issue["message"])
+                self.assertEqual(data, original)
+
     def test_bad_top_level_structure(self):
         with self.assertRaises(ValueError):
             inspect_coco({"images": []})

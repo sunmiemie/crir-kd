@@ -67,6 +67,8 @@ def inspect_coco(document):
                 raise ValueError("area must be nonnegative; segmentation area need not equal box area")
             if "iscrowd" in row and (_integer(row["iscrowd"], "iscrowd") not in (0, 1)):
                 raise ValueError("iscrowd must be 0 or 1")
+            if "ignore" in row and (not isinstance(row["ignore"], (bool, int)) or row["ignore"] not in (0, 1)):
+                raise ValueError("ignore must be a boolean or integer 0 or 1")
             valid_annotations += 1
         except ValueError as error:
             issue("annotations", index, error)

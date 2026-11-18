@@ -55,6 +55,87 @@ class CliTests(unittest.TestCase):
             self.assertEqual(status, 0)
             self.assertEqual(json.loads(output)["counts"]["train"], 1)
 
+    def coco_document_with_ignore(self, ignore):
+        return {"images": [{"id": 1, "file_name": "synthetic.jpg", "width": 100, "height": 100}],
+                "categories": [{"id": 3, "name": "target"}],
+                "annotations": [
+                    {"id": 1, "image_id": 1, "category_id": 3, "bbox": [20, 20, 10, 10]},
+                    {"id": 2, "image_id": 1, "category_id": 3, "bbox": [40, 40, 20, 20], "ignore": ignore}]}
+
+    def test_coco_invalid_ignore_flags_have_audit_exit_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "annotations.json"
+            for ignore in ("0", "false", None, [], {}, 2, 0.0):
+                with self.subTest(ignore=ignore):
+                    content = json.dumps(self.coco_document_with_ignore(ignore))
+                    path.write_text(content, encoding="utf-8")
+
+                    status, output, error = self.invoke("coco", str(path))
+
+                    self.assertEqual(status, 1)
+                    self.assertEqual(error, "")
+                    report = json.loads(output)
+                    self.assertFalse(report["valid"])
+                    self.assertEqual(report["valid_annotation_count"], 1)
+                    self.assertEqual(len(report["issues"]), 1)
+                    issue = report["issues"][0]
+                    self.assertEqual(issue["section"], "annotations")
+                    self.assertEqual(issue["index"], 1)
+                    self.assertEqual(issue["severity"], "error")
+                    self.assertIn("ignore", issue["message"])
+                    self.assertEqual(path.read_text(encoding="utf-8"), content)
+                    self.assertEqual(list(Path(directory).iterdir()), [path])
+
+    def test_convert_coco_invalid_ignore_flags_emit_no_partial_labels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "annotations.json"
+            for ignore in ("0", "false", None, [], {}, 2, 0.0):
+                for policy in ("reject", "skip"):
+                    with self.subTest(ignore=ignore, policy=policy):
+                        content = json.dumps(self.coco_document_with_ignore(ignore))
+                        path.write_text(content, encoding="utf-8")
+
+                        status, output, error = self.invoke("convert-coco", str(path), "--ignored-policy", policy)
+
+                        self.assertEqual(status, 2)
+                        self.assertEqual(output, "")
+                        self.assertIn("validation", json.loads(error)["error"])
+                        self.assertNotIn("Traceback", error)
+                        self.assertEqual(path.read_text(encoding="utf-8"), content)
+                        self.assertEqual(list(Path(directory).iterdir()), [path])
+
+    def test_coco_valid_ignore_flags_preserve_explicit_conversion_policy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "annotations.json"
+            for ignore in (0, False, 1, True):
+                with self.subTest(ignore=ignore):
+                    content = json.dumps(self.coco_document_with_ignore(ignore))
+                    path.write_text(content, encoding="utf-8")
+                    status, output, error = self.invoke("coco", str(path))
+                    self.assertEqual(status, 0)
+                    self.assertEqual(error, "")
+                    report = json.loads(output)
+                    self.assertTrue(report["valid"])
+                    self.assertEqual(report["valid_annotation_count"], 2)
+                    self.assertEqual(report["issues"], [])
+                    for policy in ("reject", "skip"):
+                        status, output, error = self.invoke("convert-coco", str(path), "--ignored-policy", policy)
+                        if ignore and policy == "reject":
+                            self.assertEqual(status, 2)
+                            self.assertEqual(output, "")
+                            self.assertIn("Crowd/ignored", json.loads(error)["error"])
+                        else:
+                            self.assertEqual(status, 0)
+                            self.assertEqual(error, "")
+                            conversion = json.loads(output)
+                            self.assertEqual(conversion["skipped_annotation_ids"], [2] if ignore else [])
+                            labels = "0 0.25 0.25 0.1 0.1\n"
+                            if not ignore:
+                                labels += "0 0.5 0.5 0.2 0.2\n"
+                            self.assertEqual(conversion["images"][0]["label_text"], labels)
+                        self.assertEqual(path.read_text(encoding="utf-8"), content)
+                        self.assertEqual(list(Path(directory).iterdir()), [path])
+
     def test_box_svg_invalid_annotation_containers_are_input_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "boxes.json"
